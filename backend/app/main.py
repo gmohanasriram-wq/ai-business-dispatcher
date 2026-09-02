@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from .routes import webhooks, stubs
+from .routes import webhooks, stubs, appointments
 from .models.db_setup import init_db
 
 # Initialize database
@@ -12,6 +12,7 @@ app = FastAPI(
 
 app.include_router(webhooks.router)
 app.include_router(stubs.router)
+app.include_router(appointments.router)
 
 @app.get("/health")
 def health():

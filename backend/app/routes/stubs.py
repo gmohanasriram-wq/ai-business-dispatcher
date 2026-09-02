@@ -13,11 +13,6 @@ def get_availability():
     # Stub for checking Google Calendar availability
     return {"status": "success", "availability": [], "message": "Google Calendar integration not configured"}
 
-@router.post("/appointments")
-def create_appointment(payload: Dict[str, Any]):
-    # Stub for confirming appointments
-    return {"status": "success", "message": "Appointment stub created"}
-
 @router.post("/notifications")
 def send_notification(payload: Dict[str, Any]):
     # Stub for sending Email/WhatsApp notifications

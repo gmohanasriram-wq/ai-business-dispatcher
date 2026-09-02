@@ -62,6 +62,8 @@ class Appointment(Base):
     preferred_date = Column(String, nullable=True)
     preferred_time = Column(String, nullable=True)
     status = Column(String, default='requested') # requested, confirmed, cancelled, failed
+    google_calendar_event_id = Column(String, nullable=True)
+    event_link = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
