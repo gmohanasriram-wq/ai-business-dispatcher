@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.cover
+*.py,cover
+*.egg
+*.egg-info
+dist/
+build/
+*.manifest
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+# Environment
+.env
+.env.*
+!.env.example
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+# OS-generated files
+.DS_Store
+Thumbs.db
+# Logs
+*.log
+# Database
+*.db
+*.sqlite
+*.sqlite3
