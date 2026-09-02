@@ -59,5 +59,5 @@ class RetellCallEvent(BaseModel):
 
 class RetellWebhookPayload(BaseModel):
     event: str
-    data: RetellCallEvent
+    call: RetellCallEvent
 

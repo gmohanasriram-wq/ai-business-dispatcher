@@ -37,7 +37,7 @@ def run_around_tests():
 def build_payload(call_id, custom_data):
     return {
         "event": "call_analyzed",
-        "data": {
+        "call": {
             "call_id": call_id,
             "call_analysis": {
                 "custom_analysis_data": custom_data

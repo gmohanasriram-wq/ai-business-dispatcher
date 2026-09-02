@@ -8,7 +8,7 @@ def process_retell_webhook(db: Session, payload: RetellWebhookPayload):
     if payload.event != "call_analyzed":
         return {"status": "ignored", "reason": f"Event {payload.event} is not call_analyzed"}
         
-    call_data = payload.data
+    call_data = payload.call
     call_id = call_data.call_id
     
     # Check idempotency
