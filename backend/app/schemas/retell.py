@@ -15,6 +15,14 @@ class CustomAnalysisData(BaseModel):
     service_area_status: Optional[str] = "unknown"
     call_outcome: Optional[str] = "incomplete_information"
 
+    @field_validator("phone_number", mode="before")
+    @classmethod
+    def normalize_phone(cls, v):
+        if isinstance(v, str):
+            v_stripped = v.strip()
+            return v_stripped if v_stripped else None
+        return v
+
     @field_validator("is_emergency", "booking_requested", mode="before")
     @classmethod
     def normalize_boolean(cls, v):

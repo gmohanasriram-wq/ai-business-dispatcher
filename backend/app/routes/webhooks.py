@@ -7,6 +7,9 @@ from pydantic import ValidationError
 import os
 import hmac
 import hashlib
+import logging
+
+logger = logging.getLogger("dispatcher.webhooks")
 
 router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 
@@ -49,6 +52,7 @@ async def retell_webhook(
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=e.errors())
 
+    logger.info("Received webhook event=%s, call_id=%s", payload.event, payload.call.call_id)
     result = process_retell_webhook(db, payload)
     return result
 

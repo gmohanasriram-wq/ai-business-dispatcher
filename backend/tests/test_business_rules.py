@@ -177,3 +177,51 @@ def test_service_model_creation():
     assert fetched_svc is not None
     assert fetched_svc.business_id == biz.id
     assert fetched_svc.category == "leak"
+
+def test_empty_string_phone_number_successive_calls():
+    # Proves two separate calls with empty/whitespace phone numbers both succeed
+    # and don't collide on the unique phone_number constraint
+    payload1 = build_payload("call_empty_phone_1", {"customer_name": "Caller 1", "phone_number": ""})
+    resp1 = client.post("/webhooks/retell", json=payload1)
+    assert resp1.status_code == 200
+    assert resp1.json()["status"] == "success"
+
+    payload2 = build_payload("call_empty_phone_2", {"customer_name": "Caller 2", "phone_number": "   "})
+    resp2 = client.post("/webhooks/retell", json=payload2)
+    assert resp2.status_code == 200
+    assert resp2.json()["status"] == "success"
+
+    db = TestingSessionLocal()
+    customers = db.query(Customer).all()
+    assert len(customers) == 2
+    for c in customers:
+        assert c.phone_number is None
+
+def test_webhook_database_error_sanitized(monkeypatch):
+    from sqlalchemy.orm import Session
+    def mock_commit(self):
+        raise Exception("internal postgres secret details and schema info")
+
+    monkeypatch.setattr(Session, "commit", mock_commit)
+
+    payload = build_payload("call_db_err", {"is_emergency": False})
+    resp = client.post("/webhooks/retell", json=payload)
+    assert resp.status_code == 500
+    assert resp.json()["detail"] == "Database transaction failed"
+    assert "secret" not in resp.text
+
+def test_concurrent_duplicate_webhook_integrity_error(monkeypatch):
+    from sqlalchemy.orm import Session
+    from sqlalchemy.exc import IntegrityError
+
+    def mock_commit(self):
+        raise IntegrityError("duplicate key value violates unique constraint on call_logs_call_id_key", params=None, orig=None)
+
+    monkeypatch.setattr(Session, "commit", mock_commit)
+
+    payload = build_payload("call_concurrent_dup", {"is_emergency": False})
+    resp = client.post("/webhooks/retell", json=payload)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "duplicate"
+    assert data["call_id"] == "call_concurrent_dup"

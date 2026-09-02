@@ -1,8 +1,12 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from ..models.database import CallLog, Customer, Lead, Appointment
 from ..schemas.retell import RetellWebhookPayload
 from fastapi import HTTPException
 import json
+import logging
+
+logger = logging.getLogger("dispatcher.retell_handler")
 
 def process_retell_webhook(db: Session, payload: RetellWebhookPayload):
     if payload.event != "call_analyzed":
@@ -14,6 +18,7 @@ def process_retell_webhook(db: Session, payload: RetellWebhookPayload):
     # Check idempotency
     existing_call = db.query(CallLog).filter(CallLog.call_id == call_id).first()
     if existing_call:
+        logger.info("Duplicate webhook detected for call_id=%s", call_id)
         return {"status": "duplicate", "call_id": call_id, "message": "Call already processed"}
         
     # Log the call
@@ -35,13 +40,16 @@ def process_retell_webhook(db: Session, payload: RetellWebhookPayload):
         
     # Find or create customer
     customer = None
-    if custom_data.phone_number:
-        customer = db.query(Customer).filter(Customer.phone_number == custom_data.phone_number).first()
+    clean_phone = custom_data.phone_number.strip() if custom_data.phone_number and isinstance(custom_data.phone_number, str) else custom_data.phone_number
+    clean_phone = clean_phone if clean_phone else None
+
+    if clean_phone:
+        customer = db.query(Customer).filter(Customer.phone_number == clean_phone).first()
         
     if not customer:
         customer = Customer(
             name=custom_data.customer_name,
-            phone_number=custom_data.phone_number
+            phone_number=clean_phone
         )
         db.add(customer)
         db.flush()
@@ -114,11 +122,23 @@ def process_retell_webhook(db: Session, payload: RetellWebhookPayload):
     call_log.status = "processed"
     db.add(call_log)
     
+    logger.info("Routed call_id=%s -> lead_status=%s, lead_id=%s", call_id, lead.status, lead.id)
+
     try:
         db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        # Handle race condition where a concurrent request inserted the same call_id
+        existing_call = db.query(CallLog).filter(CallLog.call_id == call_id).first()
+        if existing_call or "call_logs" in str(e).lower() or "call_id" in str(e).lower():
+            logger.info("Resolved concurrent duplicate webhook for call_id=%s", call_id)
+            return {"status": "duplicate", "call_id": call_id, "message": "Call already processed"}
+        logger.error("Database integrity error processing call_id=%s: %s", call_id, e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Database transaction failed")
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        logger.error("Database error processing call_id=%s: %s", call_id, e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Database transaction failed")
         
     return {
         "status": "success",

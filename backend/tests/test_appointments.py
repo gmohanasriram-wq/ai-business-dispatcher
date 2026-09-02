@@ -130,3 +130,23 @@ def test_confirm_appointment_unconfirmed_rejected():
     }
     response = client.post("/appointments", json=payload)
     assert response.status_code == 422
+
+def test_confirm_appointment_commit_failure_sanitized(monkeypatch):
+    db = TestingSessionLocal()
+    appt = setup_dummy_appointment(db)
+
+    from sqlalchemy.orm import Session
+    def mock_commit(self):
+        raise Exception("database connection dropped or disk full")
+
+    monkeypatch.setattr(Session, "commit", mock_commit)
+    payload = {
+        "call_id": "call_123",
+        "lead_id": appt.lead_id,
+        "google_calendar_event_id": "evt_123",
+        "booking_confirmed": True
+    }
+    response = client.post("/appointments", json=payload)
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Failed to persist appointment confirmation"
+    assert "disk full" not in response.text
